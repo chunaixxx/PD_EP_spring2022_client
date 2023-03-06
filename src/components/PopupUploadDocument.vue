@@ -1,11 +1,26 @@
 <template>
-	<v-dialog v-model="value_" max-width="400" class="PopupUploadDocument">
+	<v-dialog v-model="value_" max-width="500" class="PopupUploadDocument">
 		<v-card
 			class="PopupUploadDocument__card"
 			:class="{ 'grey lighten-2': dragover }"
 		>
 			<v-card-title class="text-h5"> Сформировать КД </v-card-title>
 			<v-card-text class="PopupUploadDocument__text">
+				<v-checkbox
+					v-model="checkboxIntegralityModel"
+					:disabled="isLoadingUploadFile"
+					class="PopupUploadDocument__checkbox"
+					label="Отключить проверку на целочисленность ЗЕТ"
+					hide-details="auto"
+				/>
+				<v-checkbox
+					v-model="checkboxSumModel"
+					:disabled="isLoadingUploadFile"
+					class="PopupUploadDocument__checkbox"
+					label="Отключить проверку по сумме ЗЕТ"
+					hide-details="auto"
+				/>
+
 				<UploadFileDragArea
 					v-model="uploadedFiles"
 					:accessTypes="accessTypes"
@@ -31,7 +46,7 @@
 
 <script>
 import UploadFileDragArea from '@components/ui/UploadFileDragArea'
-import requestUploadFile from '@utils/requestUploadFile'
+import axios from '@api/axios'
 
 export default {
 	name: 'PopupUploadDocument',
@@ -56,6 +71,9 @@ export default {
 
 	data: () => ({
 		fileModel: null,
+		checkboxIntegralityModel: false,
+		checkboxSumModel: false,
+
 		dragover: false,
 		uploadedFiles: [],
 
@@ -88,7 +106,21 @@ export default {
 		async onUploadBtnClick() {
 			try {
 				this.isLoadingUploadFile = true
-				const res = await requestUploadFile(this.uploadedFiles[0])
+
+				const formData = new FormData()
+
+				formData.append('file', this.uploadedFiles[0])
+				formData.append(
+					'options',
+					JSON.stringify({
+						disableCheckIntegrality: this.checkboxIntegralityModel,
+						disableCheckSumMap: this.checkboxSumModel,
+					})
+				)
+				const res = await axios.post('upload', formData, {
+					headers: { 'Content-Type': 'multipart/form-data' },
+				})
+				this.clearForm()
 
 				this.value_ = false
 				this.$emit('success', res.data)
@@ -99,6 +131,12 @@ export default {
 				this.uploadedFiles = []
 			}
 		},
+
+		clearForm() {
+			this.fileModel = null
+			this.checkboxIntegralityModel = true
+			this.checkboxSumModel = true
+		},
 	},
 }
 </script>
@@ -107,4 +145,8 @@ export default {
 .PopupUploadDocument
     &__text
         padding-bottom: 8px !important
+
+    &__checkbox
+        margin-top: 0px !important
+        margin-bottom: 12px
 </style>
